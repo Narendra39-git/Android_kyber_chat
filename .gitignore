@@ -1,0 +1,21 @@
+# Android
+build/
+.gradle/
+local.properties
+*.jks
+*.hprof
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+
+# Project specific logs and data
+backend/clients.json
+backend/server.log
+backend/server_log.txt
+backend/debug_mismatch.json
+backend/__pycache__/

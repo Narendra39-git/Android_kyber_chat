@@ -1,0 +1,61 @@
+BACKEND & LIBOQS EXPLANATION
+============================
+
+This document explains the structure of the `backend` folder and clarifies what `liboqs` is and where it lives.
+
+1. THE BACKEND FOLDER STRUCTURE
+-------------------------------
+Location: `backend/`
+
+This folder contains the Python server code that routes messages between users.
+
+*   **main.py**:
+    - The "Brain" of the server.
+    - It starts the web server (FastAPI).
+    - It handles new user registrations (`/register`).
+    - It manages WebSocket connections (`/ws`) so users can chat in real-time.
+    - It verifies "ML-DSA" signatures to ensure messages are authentic.
+
+*   **crypto_utils.py**:
+    - The "Translator".
+    - It connects Python code to the underlying C library (`liboqs`).
+    - It contains functions like `generate_kyber_encapsulation()` and `verify_dilithium_signature()`.
+    - If `liboqs` is missing, it falls back to a (insecure) mock mode for testing.
+
+*   **models.py**:
+    - The "Blueprints".
+    - Defines the structure of data packets (JSON) sent between the App and Server.
+    - Example: `Message` class defines that a message must have `sender_id`, `content`, `signature`, etc.
+
+*   **clients.json**:
+    - The "Database".
+    - A simple file that stores registered users and their Public Keys.
+    - *Note: In a huge production app, this would be replaced by a real database like PostgreSQL.*
+
+*   **requirements.txt**:
+    - The "Shopping List".
+    - Lists all Python libraries needed to run the server (`fastapi`, `uvicorn`, etc.).
+
+*   **Dockerfile**:
+    - The "Recipe".
+    - A script that builds a complete, isolated environment (Container) with everything installed automatically.
+
+2. WHAT IS LIBOQS?
+------------------
+*   **What it is**: `liboqs` (Open Quantum Safe) is an open-source C library that implements NIST's Post-Quantum Cryptography algorithms (Kyber, Dilithium, etc.).
+*   **Where is the folder?**: You won't see a `liboqs` folder inside `backend` because it is a **System Library**, similar to how `OpenSSL` is an installed program on your computer, not a file in your project.
+*   **How do we use it?**:
+    - We install it on the OS (Ubuntu/Mac).
+    - We use a Python wrapper (`liboqs-python`) to talk to it.
+    - Our `Dockerfile` handles the complex task of downloading, compiling, and installing it for you.
+ We use `liboqs-python`.
+
+*What it is**: It is the bridge that allows our Python code (`crypto_utils.py`) to call functions in the C library (`liboqs`).
+**How it works**:
+     1.  `liboqs` (C Library) does the heavy math.
+     2.  `liboqs-python` (Python Package) provides a nice Python API.
+     3.  Our Code (`import oqs`) uses that API.
+ 
+ *   **In our project**:
+     - We verify its presence in `crypto_utils.py`.
+     - We install it manually in the `Dockerfile` because it's not a standard package you can just `pip install` without the C library being present first.

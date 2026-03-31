@@ -1,0 +1,54 @@
+CODE REFERENCES: Where Cryptography Lives
+=========================================
+
+This document explains exactly where the "ML-KEM" (Kyber) and "ML-DSA" (Dilithium) algorithms are used in code, with file names and line numbers.
+
+--------------------------------------------------------------------------------
+1. ANDROID CLIENT (The Mobile App)
+--------------------------------------------------------------------------------
+File: android/app/src/main/java/com/example/kyberchat/crypto/CryptoManager.kt
+
+In the Android app, we use the "Bouncy Castle" library.
+
+Line 5:
+    import org.bouncycastle.pqc.crypto.mlkem.MLKEMKeyPairGenerator
+    -> This is the tool we import to generate Kyber keys.
+
+Line 35:
+    generator.init(MLKEMKeyGenerationParameters(secureRandom, MLKEMParameters.ml_kem_768))
+    -> HERE is where we specifically tell the app to use "ML-KEM-768" (Kyber-768). 
+       This is the standard security level (Level 3).
+
+Line 81:
+    val signer = MLDSASigner()
+    -> HERE is where we initialize the "ML-DSA" (Dilithium) signer to sign messages.
+
+--------------------------------------------------------------------------------
+2. BACKEND SERVER (The Python Server)
+--------------------------------------------------------------------------------
+File: backend/crypto_utils.py
+
+In the backend, we use the "liboqs" (Open Quantum Safe) library via Python.
+
+Line 14:
+    KYBER_ALG = "Kyber768"
+    -> We define the name "Kyber768" as a constant here. The library looks for this exact string.
+
+Line 15:
+    DILITHIUM_ALG = "ML-DSA-65"
+    -> We define "ML-DSA-65" (Dilithium Level 3) here.
+
+Line 24:
+    with oqs.KeyEncapsulation(KYBER_ALG) as kem:
+    -> HERE is where the server actually starts the Kyber algorithm to create the shared secret.
+
+Line 42:
+    with oqs.Signature(DILITHIUM_ALG) as sig:
+    -> HERE is where the server verifies the Dilithium signature sent by the user.
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+- Android uses "ML-KEM-768" and "Bouncy Castle".
+- Backend uses "Kyber768" and "liboqs".
+- Both refer to the EXACT SAME mathematical algorithm, ensuring they can talk to each other.

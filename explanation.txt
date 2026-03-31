@@ -1,0 +1,88 @@
+TECHNICAL EXPLANATION: How a Message is Sent from User A to User B
+================================================================
+
+This document explains the cryptographic flow when User A sends a secure message to User B.
+
+ALGORITHMS USED:
+- Key Encapsulation: ML-KEM-768 (formerly Kyber-768) - FIPS 203
+- Digital Signatures: ML-DSA-65 (formerly Dilithium-3) - FIPS 204
+- Symmetric Encryption: AES-256-GCM - FIPS 197
+- Hash Function: SHA-256 - FIPS 180-4
+
+STEP-BY-STEP FLOW:
+
+1. REGISTRATION (Prerequisite)
+   ---------------------------
+   - User A and User B both register with the server.
+   - During registration, the app locally generates:
+     1. An ML-KEM Key Pair (Public Key + Private Key) for receiving encrypted secrets.
+     2. An ML-DSA Key Pair (Public Key + Private Key) for signing messages.
+   - The **Public Keys** are uploaded to the Server.
+   - The **Private Keys** never leave the user's device.
+
+2. PREPARATION (User A wants to message User B)
+   --------------------------------------------
+   - User A types a message: "Hello, World!"
+   - App requests User B's **ML-KEM Public Key** from the server.
+   - Server responds with User B's Public Key.
+
+3. KEY AGREEMENT (Encapsulation)
+   -----------------------------
+   - Algorithm: **ML-KEM-768**
+   - User A uses User B's Public Key to run the `Encapsulate` function.
+   - Result:
+     1. **Shared Secret**: A random 32-byte secret (known only to A, and recoverable by B).
+     2. **Ciphertext (KEM)**: A cryptographic blob that allows B to recover the secret.
+
+4. SYMMETRIC ENCRYPTION
+   --------------------
+   - Algorithm: **AES-256-GCM**
+   - User A derives an AES Key from the Shared Secret (using SHA-256).
+   - User A encrypts the text "Hello, World!" using this AES Key.
+   - Result:
+     1. **Encrypted Content**: The scrambled message.
+     2. **Nonce (IV)**: A random initialization vector used for GCM mode.
+
+5. DIGITAL SIGNATURE (Authentication)
+   ----------------------------------
+   - Algorithm: **ML-DSA-65**
+   - User A constructs a payload containing:
+     [Sender ID] + [Recipient ID] + [Encrypted Content] + [Nonce] + [KEM Ciphertext]
+   - User A signs this payload using their own **ML-DSA Private Key**.
+   - Result: **Signature**. This proves the message came from A and hasn't been tampered with.
+
+6. TRANSMISSION
+   ------------
+   - User A sends a JSON package to the Server containing:
+     {
+       "sender_id": "UserA",
+       "recipient_id": "UserB",
+       "kem_ciphertext": <Base64>,
+       "content": <Base64 Encrypted>,
+       "nonce": <Base64>,
+       "signature": <Base64>
+     }
+   - The Server routes this message directly to User B via WebSocket. The Server CANNOT decrypt it.
+
+7. VERIFICATION (User B receives message)
+   --------------------------------------
+   - User B receives the package.
+   - Algorithm: **ML-DSA-65**
+   - User B fetches User A's **ML-DSA Public Key** (if not already cached).
+   - User B verifies the **Signature** against the payload using User A's Public Key.
+   - If verification fails: The message is discarded (it may be forged or tampered).
+   - If verification succeeds: Proceed to decryption.
+
+8. KEY RECOVERY (Decapsulation)
+   ----------------------------
+   - Algorithm: **ML-KEM-768**
+   - User B takes the **KEM Ciphertext** from the package.
+   - User B uses their own **ML-KEM Private Key** to run the `Decapsulate` function.
+   - Result: User B recovers the exact same **Shared Secret** that User A generated in Step 3.
+
+9. DECRYPTION
+   ----------
+   - Algorithm: **AES-256-GCM**
+   - User B derives the AES Key from the recovered Shared Secret.
+   - User B uses the AES Key and Nonce to decrypt the **Encrypted Content**.
+   - Result: "Hello, World!" is displayed on the screen.
